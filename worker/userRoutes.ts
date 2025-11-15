@@ -4,7 +4,6 @@ import { ChatAgent } from './agent';
 import { API_RESPONSES } from './config';
 import { Env, getAppController, registerSession, unregisterSession } from "./core-utils";
 import { generatePresentation } from "./presentation-generator";
-import OpenAI from "openai";
 // Simple in-memory cache for generated files. In a real-world scenario, use R2 or KV.
 const generatedFiles = new Map<string, { blob: Blob, filename: string }>();
 /**
@@ -39,16 +38,24 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             if (!apiKey) {
                 return c.json({ success: false, error: 'API key is required.' }, { status: 400 });
             }
-            const openai = new OpenAI({ baseURL: c.env.CF_AI_BASE_URL, apiKey });
-            const models = await openai.models.list();
-            const availableModels = models.data
-                .filter(model => model.id.includes('gemini'))
-                .map(model => ({ id: model.id, name: model.id.split('/').pop()?.replace(/-/g, ' ')?.replace(/\b\w/g, l => l.toUpperCase()) || model.id }))
-                .sort((a, b) => a.name.localeCompare(b.name));
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: { message: 'Invalid API Key or failed to connect to Google AI service.' } }));
+                throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            const availableModels = data.models
+                .filter((model: any) => model.supportedGenerationMethods.includes('generateContent') && model.name.includes('gemini'))
+                .map((model: any) => ({
+                    id: model.name.replace('models/', ''),
+                    name: model.displayName,
+                }))
+                .sort((a: any, b: any) => a.name.localeCompare(b.name));
             return c.json({ success: true, data: { models: availableModels } });
         } catch (error) {
             console.error('API Key validation failed:', error);
-            return c.json({ success: false, error: 'Invalid API Key or failed to connect to AI service.' }, { status: 401 });
+            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+            return c.json({ success: false, error: `Invalid API Key. ${errorMessage}` }, { status: 401 });
         }
     });
     app.post('/api/generate-presentation', async (c) => {

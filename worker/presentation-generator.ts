@@ -1,4 +1,3 @@
-import OpenAI from 'openai';
 import pdf from 'pdf-parse';
 import PptxGenJS from 'pptxgenjs';
 import type { Env } from './core-utils';
@@ -200,15 +199,26 @@ export async function generatePresentation(formData: FormData, env: Env, apiKey:
     if (!file) throw new Error('PDF file is missing.');
     const { text: extractedText, numPages } = await extractPdfData(file);
     const prompt = createSummarizationPrompt(extractedText, settings);
-    const openai = new OpenAI({ baseURL: env.CF_AI_BASE_URL, apiKey: apiKey });
-    const response = await openai.chat.completions.create({
-      model: settings.selectedModel,
-      messages: [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' },
-      temperature: 0.5,
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${settings.selectedModel}:generateContent?key=${apiKey}`;
+    const payload = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        response_mime_type: "application/json",
+        temperature: 0.5,
+      },
+    };
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
-    const aiContent = response.choices[0].message.content;
-    if (!aiContent) throw new Error('AI returned an empty response.');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: { message: 'Unknown API error' } }));
+      throw new Error(errorData.error?.message || `Google AI API responded with status: ${response.status}`);
+    }
+    const responseData = await response.json();
+    const aiContent = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!aiContent) throw new Error('AI returned an empty or invalid response.');
     const summarizedData = JSON.parse(aiContent) as { slides: SlideData[] };
     if (!summarizedData.slides || !Array.isArray(summarizedData.slides)) {
       throw new Error('AI returned data in an invalid format.');

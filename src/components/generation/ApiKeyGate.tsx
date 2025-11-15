@@ -6,7 +6,7 @@ import { PasswordInput } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { KeyRound, BrainCircuit, Loader, AlertCircle, CheckCircle } from 'lucide-react';
+import { KeyRound, BrainCircuit, Loader, AlertCircle, CheckCircle, ExternalLink } from 'lucide-react';
 export function ApiKeyGate() {
   const apiKey = useGenerationStore((s) => s.apiKey);
   const setApiKey = useGenerationStore((s) => s.setApiKey);
@@ -33,7 +33,15 @@ export function ApiKeyGate() {
     <div className="space-y-8">
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-semibold">Welcome to SlideCraft AI</h2>
-        <p className="text-muted-foreground">Please provide your Cloudflare AI Gateway API key to begin.</p>
+        <p className="text-muted-foreground">Please provide your Google AI API key to begin.</p>
+        <a
+          href="https://aistudio.google.com/app/apikey"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-blue-500 hover:underline inline-flex items-center gap-1"
+        >
+          Get your Google AI key here <ExternalLink className="h-3 w-3" />
+        </a>
       </div>
       <AnimatePresence mode="wait">
         {!isValidated ? (
@@ -46,11 +54,11 @@ export function ApiKeyGate() {
             className="space-y-6"
           >
             <div className="space-y-2">
-              <Label htmlFor="api-key">API Key</Label>
+              <Label htmlFor="api-key">Google AI API Key</Label>
               <div className="flex items-center gap-2">
                 <PasswordInput
                   id="api-key"
-                  placeholder="Enter your API key"
+                  placeholder="Enter your Google AI key"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   disabled={isLoading}
