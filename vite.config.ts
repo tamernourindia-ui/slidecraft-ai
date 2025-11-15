@@ -1,13 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { cloudflare } from '@cloudflare/vite-plugin';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
-    // The Cloudflare plugin is essential for Pages integration.
-    cloudflare(),
   ],
   // Robust dependency optimization to address pre-bundling issues.
   optimizeDeps: {
@@ -18,9 +15,9 @@ export default defineConfig({
       'react-dom',
       'react-dom/client',
       'react-router-dom',
+      'pdfjs-dist',
     ],
     force: true, // Force re-bundling on server start.
-    exclude: ['agents'], // Exclude agents package from pre-bundling due to Node.js dependencies
   },
   // Resolve and dedupe React versions to prevent hook errors.
   resolve: {
@@ -56,7 +53,7 @@ export default defineConfig({
   server: {
     allowedHosts: true,
   },
-  // Define Node.js globals for the agents package.
+  // Define Node.js globals for packages that might need them.
   define: {
     global: 'globalThis',
   },

@@ -6,15 +6,12 @@
 		},
 		{
 			"path": "./tsconfig.node.json"
-		},
-		{
-			"path": "./tsconfig.worker.json"
 		}
 	],
 	"compilerOptions": {
 		"incremental": true,
 		"types": [
-			"@cloudflare/workers-types"
+			"vite/client"
 		],
 		"baseUrl": ".",
 		"paths": {

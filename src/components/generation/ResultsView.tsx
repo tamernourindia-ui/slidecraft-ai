@@ -8,6 +8,7 @@ import { Toaster, toast } from '@/components/ui/sonner';
 export function ResultsView() {
   const result = useGenerationStore((s) => s.result);
   const reset = useGenerationStore((s) => s.reset);
+  const paperName = useGenerationStore((s) => s.paperName);
   const settings = useGenerationStore((s) => ({
     farsiFont: s.farsiFont,
     englishFont: s.englishFont,
@@ -28,35 +29,21 @@ export function ResultsView() {
     navigator.clipboard.writeText(statsText);
     toast.success('Statistics copied to clipboard!');
   };
-  const handleDownload = async (url: string) => {
+  const handleDownload = (url: string, type: 'presentation' | 'presenter') => {
     try {
-      toast.loading('Preparing your download...', { id: 'download-toast' });
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Download failed: ${response.statusText}`);
-      }
-      const contentDisposition = response.headers.get('content-disposition');
-      let filename = 'download.pptx';
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-        if (filenameMatch && filenameMatch.length > 1) {
-          filename = filenameMatch[1];
-        }
-      }
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
+      const safePaperName = paperName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const filename = `${type}_${safePaperName}.pptx`;
       const a = document.createElement('a');
-      a.href = downloadUrl;
+      a.href = url;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-      toast.success('Download started!', { id: 'download-toast' });
+      toast.success('Download started!');
     } catch (error) {
       console.error('Download error:', error);
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-      toast.error(`Download failed: ${errorMessage}`, { id: 'download-toast' });
+      toast.error(`Download failed: ${errorMessage}`);
     }
   };
   return (
@@ -101,14 +88,14 @@ export function ResultsView() {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-center">Download Your Files</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Button size="lg" className="h-auto py-3 flex flex-col items-start text-left" onClick={() => handleDownload(presentationUrl)}>
+              <Button size="lg" className="h-auto py-3 flex flex-col items-start text-left" onClick={() => handleDownload(presentationUrl, 'presentation')}>
                 <div className="flex items-center gap-2">
                   <Download className="h-5 w-5" />
                   <span className="font-semibold">Presentation Version</span>
                 </div>
                 <span className="text-xs opacity-80">Polished design for your audience.</span>
               </Button>
-              <Button size="lg" variant="secondary" className="h-auto py-3 flex flex-col items-start text-left" onClick={() => handleDownload(presenterUrl)}>
+              <Button size="lg" variant="secondary" className="h-auto py-3 flex flex-col items-start text-left" onClick={() => handleDownload(presenterUrl, 'presenter')}>
                 <div className="flex items-center gap-2">
                   <Download className="h-5 w-5" />
                   <span className="font-semibold">Presenter Version</span>

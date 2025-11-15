@@ -9,6 +9,7 @@ import {
   ColorTheme,
   AIModel,
 } from '@/lib/types';
+import { generatePresentation } from '@/lib/presentation-generator';
 interface GenerationState extends GenerationSettings {
   appStatus: AppStatus;
   currentStep: number;
@@ -77,18 +78,22 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
     }
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch('/api/validate-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey }),
-      });
+      const API_URL = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+      const response = await fetch(API_URL);
       const result = await response.json();
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Invalid API Key.');
+      if (!response.ok) {
+        throw new Error(result.error?.message || 'Invalid API Key.');
+      }
+      const geminiModels = result.models
+        .filter((m: any) => m.name.includes('gemini') && m.supportedGenerationMethods.includes('generateContent'))
+        .map((m: any) => ({ id: m.name, name: m.displayName }))
+        .sort((a: AIModel, b: AIModel) => a.name.localeCompare(b.name));
+      if (geminiModels.length === 0) {
+        throw new Error("No compatible Gemini models found for this API key.");
       }
       set({
-        availableModels: result.data.models,
-        selectedModel: result.data.models[0]?.id || '',
+        availableModels: geminiModels,
+        selectedModel: geminiModels[0]?.id || '',
         isLoading: false,
       });
       return true;
@@ -101,8 +106,8 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
   nextStep: () => set((state) => ({ currentStep: Math.min(state.currentStep + 1, 3) })),
   prevStep: () => set((state) => ({ currentStep: Math.max(state.currentStep - 1, 1) })),
   startProcessing: async () => {
-    const { pdfFile, apiKey, selectedModel, ...settings } = get();
-    if (!pdfFile) {
+    const { apiKey, selectedModel, ...settings } = get();
+    if (!settings.pdfFile) {
       set({ error: 'PDF file is required.' });
       return;
     }
@@ -111,30 +116,29 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
       return;
     }
     set({ appStatus: 'processing', isLoading: true, error: null });
-    const formData = new FormData();
-    formData.append('pdfFile', pdfFile);
-    formData.append('apiKey', apiKey);
-    formData.append('selectedModel', selectedModel);
-    Object.entries(settings).forEach(([key, value]) => {
-      formData.append(key, String(value));
-    });
     try {
-      const response = await fetch('/api/generate-presentation', {
-        method: 'POST',
-        body: formData,
-      });
-      const result = await response.json();
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to generate presentation.');
-      }
-      set({ appStatus: 'results', result: result.data, isLoading: false });
+      const { presentationBlob, presenterBlob, stats } = await generatePresentation(settings, apiKey, selectedModel);
+      const presentationUrl = URL.createObjectURL(presentationBlob);
+      const presenterUrl = URL.createObjectURL(presenterBlob);
+      const resultData: GenerationResult = {
+        statistics: stats,
+        presentationUrl,
+        presenterUrl,
+      };
+      set({ appStatus: 'results', result: resultData, isLoading: false });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred during generation.';
+      console.error("Generation failed:", error);
       set({ appStatus: 'form', error: errorMessage, isLoading: false });
     }
   },
   showResults: (result) => set({ appStatus: 'results', result, isLoading: false }),
-  reset: () =>
+  reset: () => {
+    const oldResult = get().result;
+    if (oldResult) {
+      URL.revokeObjectURL(oldResult.presentationUrl);
+      URL.revokeObjectURL(oldResult.presenterUrl);
+    }
     set({
       ...initialState,
       appStatus: 'form',
@@ -146,5 +150,6 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
       isApiKeyValid: false,
       availableModels: [],
       selectedModel: '',
-    }),
+    });
+  },
 }));
