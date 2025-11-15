@@ -1,5 +1,5 @@
 {
-  "name": "slidecraft-ai-zj259odh98p9ct0yedwuo",
+  "name": "vite-cfagents-runner",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,11 +9,9 @@
     "lint": "eslint --cache -f json --quiet .",
     "preview": "bun run build && vite preview --host 0.0.0.0 --port ${PORT:-4173}",
     "deploy": "bun run build && wrangler deploy",
-    "cf-typegen": "wrangler types",
-    "prepare": "bun .bootstrap.js || true"
+    "cf-typegen": "wrangler types"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "^4.20250807.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@headlessui/react": "^2.2.4",
@@ -50,7 +48,6 @@
     "@tanstack/react-query": "^5.83.0",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
-    "agents": "^0.0.109",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -59,7 +56,6 @@
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
     "framer-motion": "^12.23.0",
-    "hono": "^4.8.5",
     "immer": "^10.1.1",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.525.0",
@@ -68,6 +64,7 @@
     "next-themes": "^0.4.6",
     "openai": "^5.10.1",
     "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "4.5.136",
     "pino": "^9.11.0",
     "pptxgenjs": "^3.12.0",
     "react": "^18.3.1",
@@ -92,7 +89,6 @@
     "zustand": "^5.0.6"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.9.4",
     "@eslint/js": "^9.22.0",
     "@types/node": "^22.15.3",
     "@types/react": "^18.3.1",
