@@ -77,11 +77,7 @@ function updateWranglerJsonc() {
 }
 
 function runSetupCommands() {
-    const commands = [
-    "bun add pptxgenjs@^3.12.0",
-    "bun add pdf-parse@^1.1.1",
-    "bun add react-dropzone@^14.2.3"
-];
+    const commands = [];
     
     if (commands.length === 0) {
         console.log('⊘ No setup commands to run');
