@@ -33,3 +33,7 @@ export interface GenerationResult {
   presentationUrl: string;
   presenterUrl: string;
 }
+export interface AIModel {
+  id: string;
+  name: string;
+}

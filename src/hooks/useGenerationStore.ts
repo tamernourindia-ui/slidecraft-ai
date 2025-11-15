@@ -2,12 +2,12 @@ import { create } from 'zustand';
 import {
   GenerationSettings,
   AppStatus,
-  ProcessingStep,
   GenerationResult,
   SummarizationLevel,
   FarsiFont,
   EnglishFont,
   ColorTheme,
+  AIModel,
 } from '@/lib/types';
 interface GenerationState extends GenerationSettings {
   appStatus: AppStatus;
@@ -15,6 +15,10 @@ interface GenerationState extends GenerationSettings {
   isLoading: boolean;
   error: string | null;
   result: GenerationResult | null;
+  apiKey: string;
+  isApiKeyValid: boolean;
+  availableModels: AIModel[];
+  selectedModel: string;
   setPaperName: (name: string) => void;
   setPdfFile: (file: File | null) => void;
   setNumSlides: (slides: number) => void;
@@ -23,6 +27,10 @@ interface GenerationState extends GenerationSettings {
   setEnglishFont: (font: EnglishFont) => void;
   setFontSize: (size: number) => void;
   setColorTheme: (theme: ColorTheme) => void;
+  setApiKey: (key: string) => void;
+  setSelectedModel: (modelId: string) => void;
+  validateApiKey: () => Promise<boolean>;
+  setApiKeyValid: (isValid: boolean) => void;
   nextStep: () => void;
   prevStep: () => void;
   startProcessing: () => Promise<void>;
@@ -46,6 +54,10 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
   isLoading: false,
   error: null,
   result: null,
+  apiKey: '',
+  isApiKeyValid: false,
+  availableModels: [],
+  selectedModel: '',
   setPaperName: (name) => set({ paperName: name }),
   setPdfFile: (file) => set({ pdfFile: file }),
   setNumSlides: (slides) => set({ numSlides: slides }),
@@ -54,17 +66,55 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
   setEnglishFont: (font) => set({ englishFont: font }),
   setFontSize: (size) => set({ fontSize: size }),
   setColorTheme: (theme) => set({ colorTheme: theme }),
+  setApiKey: (key) => set({ apiKey: key }),
+  setSelectedModel: (modelId) => set({ selectedModel: modelId }),
+  setApiKeyValid: (isValid) => set({ isApiKeyValid: isValid }),
+  validateApiKey: async () => {
+    const { apiKey } = get();
+    if (!apiKey) {
+      set({ error: 'API Key cannot be empty.' });
+      return false;
+    }
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch('/api/validate-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Invalid API Key.');
+      }
+      set({
+        availableModels: result.data.models,
+        selectedModel: result.data.models[0]?.id || '',
+        isLoading: false,
+      });
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      set({ error: errorMessage, isLoading: false, availableModels: [] });
+      return false;
+    }
+  },
   nextStep: () => set((state) => ({ currentStep: Math.min(state.currentStep + 1, 3) })),
   prevStep: () => set((state) => ({ currentStep: Math.max(state.currentStep - 1, 1) })),
   startProcessing: async () => {
-    const { pdfFile, ...settings } = get();
+    const { pdfFile, apiKey, selectedModel, ...settings } = get();
     if (!pdfFile) {
       set({ error: 'PDF file is required.' });
+      return;
+    }
+    if (!apiKey || !selectedModel) {
+      set({ error: 'API Key and a selected model are required.' });
       return;
     }
     set({ appStatus: 'processing', isLoading: true, error: null });
     const formData = new FormData();
     formData.append('pdfFile', pdfFile);
+    formData.append('apiKey', apiKey);
+    formData.append('selectedModel', selectedModel);
     Object.entries(settings).forEach(([key, value]) => {
       formData.append(key, String(value));
     });
@@ -81,8 +131,6 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
       set({ appStatus: 'form', error: errorMessage, isLoading: false });
-      // Optionally reset to a specific step, e.g., step 1
-      // set({ currentStep: 1 });
     }
   },
   showResults: (result) => set({ appStatus: 'results', result, isLoading: false }),
@@ -94,5 +142,9 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
       isLoading: false,
       error: null,
       result: null,
+      apiKey: '',
+      isApiKeyValid: false,
+      availableModels: [],
+      selectedModel: '',
     }),
 }));

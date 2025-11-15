@@ -4,6 +4,7 @@ import { ChatAgent } from './agent';
 import { API_RESPONSES } from './config';
 import { Env, getAppController, registerSession, unregisterSession } from "./core-utils";
 import { generatePresentation } from "./presentation-generator";
+import OpenAI from "openai";
 // Simple in-memory cache for generated files. In a real-world scenario, use R2 or KV.
 const generatedFiles = new Map<string, { blob: Blob, filename: string }>();
 /**
@@ -32,10 +33,33 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     });
 }
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
+    app.post('/api/validate-key', async (c) => {
+        try {
+            const { apiKey } = await c.req.json();
+            if (!apiKey) {
+                return c.json({ success: false, error: 'API key is required.' }, { status: 400 });
+            }
+            const openai = new OpenAI({ baseURL: c.env.CF_AI_BASE_URL, apiKey });
+            const models = await openai.models.list();
+            const availableModels = models.data
+                .filter(model => model.id.includes('gemini'))
+                .map(model => ({ id: model.id, name: model.id.split('/').pop()?.replace(/-/g, ' ')?.replace(/\b\w/g, l => l.toUpperCase()) || model.id }))
+                .sort((a, b) => a.name.localeCompare(b.name));
+            return c.json({ success: true, data: { models: availableModels } });
+        } catch (error) {
+            console.error('API Key validation failed:', error);
+            return c.json({ success: false, error: 'Invalid API Key or failed to connect to AI service.' }, { status: 401 });
+        }
+    });
     app.post('/api/generate-presentation', async (c) => {
         try {
             const formData = await c.req.formData();
-            const result = await generatePresentation(formData, c.env);
+            const apiKey = formData.get('apiKey') as string;
+            const selectedModel = formData.get('selectedModel') as string;
+            if (!apiKey || !selectedModel) {
+                return c.json({ success: false, error: 'API Key and a selected model are required.' }, { status: 400 });
+            }
+            const result = await generatePresentation(formData, c.env, apiKey, selectedModel);
             if (!result.success || !result.data) {
                 return c.json({ success: false, error: result.error || 'Generation failed' }, { status: 500 });
             }

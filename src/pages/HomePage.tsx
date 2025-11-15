@@ -3,10 +3,12 @@ import { useGenerationStore } from '@/hooks/useGenerationStore';
 import { MultiStepForm } from '@/components/generation/MultiStepForm';
 import { ProcessingView } from '@/components/generation/ProcessingView';
 import { ResultsView } from '@/components/generation/ResultsView';
+import { ApiKeyGate } from '@/components/generation/ApiKeyGate';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { FileSliders } from 'lucide-react';
 export function HomePage() {
   const appStatus = useGenerationStore((s) => s.appStatus);
+  const isApiKeyValid = useGenerationStore((s) => s.isApiKeyValid);
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-foreground">
       <div
@@ -33,18 +35,31 @@ export function HomePage() {
           </p>
         </motion.div>
         <AnimatePresence mode="wait">
-          <motion.div
-            key={appStatus}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="w-full bg-card p-6 sm:p-8 rounded-2xl shadow-2xl shadow-slate-900/10 border"
-          >
-            {appStatus === 'form' && <MultiStepForm />}
-            {appStatus === 'processing' && <ProcessingView />}
-            {appStatus === 'results' && <ResultsView />}
-          </motion.div>
+          {!isApiKeyValid ? (
+            <motion.div
+              key="api-gate"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="w-full max-w-2xl bg-card p-6 sm:p-8 rounded-2xl shadow-2xl shadow-slate-900/10 border"
+            >
+              <ApiKeyGate />
+            </motion.div>
+          ) : (
+            <motion.div
+              key={appStatus}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="w-full bg-card p-6 sm:p-8 rounded-2xl shadow-2xl shadow-slate-900/10 border"
+            >
+              {appStatus === 'form' && <MultiStepForm />}
+              {appStatus === 'processing' && <ProcessingView />}
+              {appStatus === 'results' && <ResultsView />}
+            </motion.div>
+          )}
         </AnimatePresence>
         <footer className="text-center mt-12 text-sm text-muted-foreground">
           <p>Built with ❤️ at Cloudflare.
