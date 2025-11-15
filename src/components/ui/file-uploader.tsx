@@ -8,7 +8,7 @@ type FileUploaderProps = {
   dropzoneOptions?: DropzoneOptions;
   className?: string;
 };
-export function FileUploader({ value, onValue-change, dropzoneOptions, className }: FileUploaderProps) {
+export function FileUploader({ value, onValueChange, dropzoneOptions, className }: FileUploaderProps) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: (acceptedFiles) => {
       onValueChange(acceptedFiles[0] ?? null);

@@ -22,11 +22,18 @@ export function ResultsView() {
       </div>
     );
   }
-  const { statistics } = result;
+  const { statistics, presentationUrl, presenterUrl } = result;
   const copyStats = () => {
-    const statsText = Object.entries(statistics).map(([key, value]) => `${key}: ${value}`).join('\n');
+    const statsText = Object.entries(statistics).map(([key, value]) => `${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}: ${value}`).join('\n');
     navigator.clipboard.writeText(statsText);
     toast.success('Statistics copied to clipboard!');
+  };
+  const handleDownload = (url: string) => {
+    // In a real scenario, this would trigger a download.
+    // For now, we'll just log it and show a toast, as the backend returns mock URLs.
+    console.log(`Downloading from: ${url}`);
+    toast.info("Download functionality will be fully enabled in the next phase.");
+    // window.open(url, '_blank'); // This would be used with real URLs
   };
   return (
     <motion.div
@@ -70,14 +77,14 @@ export function ResultsView() {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-center">Download Your Files</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Button size="lg" className="h-auto py-3 flex flex-col items-start text-left">
+              <Button size="lg" className="h-auto py-3 flex flex-col items-start text-left" onClick={() => handleDownload(presentationUrl)}>
                 <div className="flex items-center gap-2">
                   <Download className="h-5 w-5" />
                   <span className="font-semibold">Presentation Version</span>
                 </div>
                 <span className="text-xs opacity-80">Polished design for your audience.</span>
               </Button>
-              <Button size="lg" variant="secondary" className="h-auto py-3 flex flex-col items-start text-left">
+              <Button size="lg" variant="secondary" className="h-auto py-3 flex flex-col items-start text-left" onClick={() => handleDownload(presenterUrl)}>
                 <div className="flex items-center gap-2">
                   <Download className="h-5 w-5" />
                   <span className="font-semibold">Presenter Version</span>

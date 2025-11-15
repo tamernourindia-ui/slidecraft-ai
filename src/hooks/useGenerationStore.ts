@@ -12,7 +12,8 @@ import {
 interface GenerationState extends GenerationSettings {
   appStatus: AppStatus;
   currentStep: number;
-  processingSteps: ProcessingStep[];
+  isLoading: boolean;
+  error: string | null;
   result: GenerationResult | null;
   setPaperName: (name: string) => void;
   setPdfFile: (file: File | null) => void;
@@ -24,9 +25,7 @@ interface GenerationState extends GenerationSettings {
   setColorTheme: (theme: ColorTheme) => void;
   nextStep: () => void;
   prevStep: () => void;
-  startProcessing: () => void;
-  setProcessingSteps: (steps: ProcessingStep[]) => void;
-  updateProcessingStep: (id: string, updates: Partial<ProcessingStep>) => void;
+  startProcessing: () => Promise<void>;
   showResults: (result: GenerationResult) => void;
   reset: () => void;
 }
@@ -44,7 +43,8 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
   ...initialState,
   appStatus: 'form',
   currentStep: 1,
-  processingSteps: [],
+  isLoading: false,
+  error: null,
   result: null,
   setPaperName: (name) => set({ paperName: name }),
   setPdfFile: (file) => set({ pdfFile: file }),
@@ -56,21 +56,43 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
   setColorTheme: (theme) => set({ colorTheme: theme }),
   nextStep: () => set((state) => ({ currentStep: Math.min(state.currentStep + 1, 3) })),
   prevStep: () => set((state) => ({ currentStep: Math.max(state.currentStep - 1, 1) })),
-  startProcessing: () => set({ appStatus: 'processing', currentStep: 1 }),
-  setProcessingSteps: (steps) => set({ processingSteps: steps }),
-  updateProcessingStep: (id, updates) =>
-    set((state) => ({
-      processingSteps: state.processingSteps.map((step) =>
-        step.id === id ? { ...step, ...updates } : step
-      ),
-    })),
-  showResults: (result) => set({ appStatus: 'results', result }),
+  startProcessing: async () => {
+    const { pdfFile, ...settings } = get();
+    if (!pdfFile) {
+      set({ error: 'PDF file is required.' });
+      return;
+    }
+    set({ appStatus: 'processing', isLoading: true, error: null });
+    const formData = new FormData();
+    formData.append('pdfFile', pdfFile);
+    Object.entries(settings).forEach(([key, value]) => {
+      formData.append(key, String(value));
+    });
+    try {
+      const response = await fetch('/api/generate-presentation', {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to generate presentation.');
+      }
+      set({ appStatus: 'results', result: result.data, isLoading: false });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      set({ appStatus: 'form', error: errorMessage, isLoading: false });
+      // Optionally reset to a specific step, e.g., step 1
+      // set({ currentStep: 1 });
+    }
+  },
+  showResults: (result) => set({ appStatus: 'results', result, isLoading: false }),
   reset: () =>
     set({
       ...initialState,
       appStatus: 'form',
       currentStep: 1,
-      processingSteps: [],
+      isLoading: false,
+      error: null,
       result: null,
     }),
 }));
