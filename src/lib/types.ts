@@ -28,7 +28,7 @@ export interface GenerationResult {
     slides: number;
     summaryLevel: string;
     duration: string;
-    translationQuality: string;
+    modelUsed: string;
   };
   presentationUrl: string;
   presenterUrl: string;
