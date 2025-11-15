@@ -5,5 +5,5 @@
 		"types": ["@cloudflare/workers-types", "vite/client"],
 		"lib": ["ES2023", "WebWorker", "ESNext.Intl"]
 	},
-	"include": ["worker"]
+	"include": ["worker", "worker/types.d.ts"]
 }

@@ -1,4 +1,4 @@
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useGenerationStore } from '@/hooks/useGenerationStore';
 import { Step1Info } from './steps/Step1Info';
 import { Step2Summarize } from './steps/Step2Summarize';
@@ -20,6 +20,11 @@ export function MultiStepForm() {
     { number: 2, name: 'Summarization' },
     { number: 3, name: 'Design' },
   ];
+  const stepVariants = {
+    hidden: { opacity: 0, x: 50 },
+    visible: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -50 },
+  };
   return (
     <div className="w-full">
       <div className="mb-8">
@@ -35,11 +40,21 @@ export function MultiStepForm() {
           ))}
         </div>
       </div>
-      <div className="min-h-[420px]">
+      <div className="min-h-[420px] overflow-hidden relative">
         <AnimatePresence mode="wait">
-          {currentStep === 1 && <Step1Info key="step1" />}
-          {currentStep === 2 && <Step2Summarize key="step2" />}
-          {currentStep === 3 && <Step3Design key="step3" />}
+          <motion.div
+            key={currentStep}
+            variants={stepVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="absolute w-full"
+          >
+            {currentStep === 1 && <Step1Info />}
+            {currentStep === 2 && <Step2Summarize />}
+            {currentStep === 3 && <Step3Design />}
+          </motion.div>
         </AnimatePresence>
       </div>
       <div className="mt-8 flex justify-between items-center">
