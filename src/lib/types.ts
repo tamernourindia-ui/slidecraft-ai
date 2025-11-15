@@ -28,12 +28,8 @@ export interface GenerationResult {
     slides: number;
     summaryLevel: string;
     duration: string;
-    modelUsed: string;
+    translationQuality: string;
   };
   presentationUrl: string;
   presenterUrl: string;
-}
-export interface AIModel {
-  id: string;
-  name: string;
 }
