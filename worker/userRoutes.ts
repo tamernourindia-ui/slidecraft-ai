@@ -40,8 +40,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             }
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: { message: 'Invalid API Key or failed to connect to Google AI service.' } }));
-                throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+                const errorData = await response.json().catch(() => null);
+                const message = errorData?.error?.message || `Invalid API Key or failed to connect to Google AI service. Status: ${response.status}`;
+                throw new Error(message);
             }
             const data = await response.json();
             const availableModels = data.models
@@ -54,8 +55,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             return c.json({ success: true, data: { models: availableModels } });
         } catch (error) {
             console.error('API Key validation failed:', error);
-            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-            return c.json({ success: false, error: `Invalid API Key. ${errorMessage}` }, { status: 401 });
+            let errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+            // Clean up common Google API error prefixes
+            errorMessage = errorMessage.replace(/^\[.*?\]\s*/, '');
+            return c.json({ success: false, error: `Validation Failed: ${errorMessage}` }, { status: 401 });
         }
     });
     app.post('/api/generate-presentation', async (c) => {

@@ -186,8 +186,11 @@ async function callGoogleAI(prompt: string, apiKey: string, model: string) {
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    const errorData: any = await response.json().catch(() => ({ error: { message: 'Unknown API error' } }));
-    throw new Error(errorData.error?.message || `Google AI API responded with status: ${response.status}`);
+    const errorData: any = await response.json().catch(() => ({ error: { message: `Google AI API responded with status: ${response.status}` } }));
+    let message = errorData.error?.message || `Google AI API responded with status: ${response.status}`;
+    // Clean up common prefixes from Google API errors for better readability
+    message = message.replace(/^\[.*?\]\s*/, '');
+    throw new Error(message);
   }
   const responseData: any = await response.json();
   const aiContent = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
