@@ -82,7 +82,8 @@ function runSetupCommands() {
     "bun add pdf-parse@^1.1.1",
     "bun add react-dropzone@^14.2.3",
     "bun add pdfjs-dist@4.5.136",
-    "bun remove @cloudflare/vite-plugin @cloudflare/workers-types hono agents"
+    "bun remove @cloudflare/vite-plugin @cloudflare/workers-types hono agents",
+    "bun add pdfjs-dist@^4.4.178"
 ];
     
     if (commands.length === 0) {
