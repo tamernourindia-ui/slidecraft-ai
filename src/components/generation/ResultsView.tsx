@@ -28,12 +28,36 @@ export function ResultsView() {
     navigator.clipboard.writeText(statsText);
     toast.success('Statistics copied to clipboard!');
   };
-  const handleDownload = (url: string) => {
-    // In a real scenario, this would trigger a download.
-    // For now, we'll just log it and show a toast, as the backend returns mock URLs.
-    console.log(`Downloading from: ${url}`);
-    toast.info("Download functionality will be fully enabled in the next phase.");
-    // window.open(url, '_blank'); // This would be used with real URLs
+  const handleDownload = async (url: string) => {
+    try {
+      toast.loading('Preparing your download...', { id: 'download-toast' });
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.statusText}`);
+      }
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = 'download.pptx';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch && filenameMatch.length > 1) {
+          filename = filenameMatch[1];
+        }
+      }
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      toast.success('Download started!', { id: 'download-toast' });
+    } catch (error) {
+      console.error('Download error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      toast.error(`Download failed: ${errorMessage}`, { id: 'download-toast' });
+    }
   };
   return (
     <motion.div

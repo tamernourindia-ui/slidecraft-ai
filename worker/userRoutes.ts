@@ -4,6 +4,8 @@ import { ChatAgent } from './agent';
 import { API_RESPONSES } from './config';
 import { Env, getAppController, registerSession, unregisterSession } from "./core-utils";
 import { generatePresentation } from "./presentation-generator";
+// Simple in-memory cache for generated files. In a real-world scenario, use R2 or KV.
+const generatedFiles = new Map<string, { blob: Blob, filename: string }>();
 /**
  * DO NOT MODIFY THIS FUNCTION. Only for your reference.
  */
@@ -30,11 +32,53 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     });
 }
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
-    // Add your routes here
-    /**
-     * List all chat sessions
-     * GET /api/sessions
-     */
+    app.post('/api/generate-presentation', async (c) => {
+        try {
+            const formData = await c.req.formData();
+            const result = await generatePresentation(formData, c.env);
+            if (!result.success || !result.data) {
+                return c.json({ success: false, error: result.error || 'Generation failed' }, { status: 500 });
+            }
+            const { presentationBlob, presenterBlob, statistics, filename } = result.data;
+            const presentationId = crypto.randomUUID();
+            const presenterId = crypto.randomUUID();
+            generatedFiles.set(presentationId, { blob: presentationBlob, filename: `Presentation_${filename}.pptx` });
+            generatedFiles.set(presenterId, { blob: presenterBlob, filename: `Presenter_${filename}.pptx` });
+            // Set a timeout to clear the files from memory after 10 minutes
+            setTimeout(() => {
+                generatedFiles.delete(presentationId);
+                generatedFiles.delete(presenterId);
+            }, 10 * 60 * 1000);
+            return c.json({
+                success: true,
+                data: {
+                    statistics,
+                    presentationUrl: `/api/download/${presentationId}`,
+                    presenterUrl: `/api/download/${presenterId}`,
+                }
+            });
+        } catch (error) {
+            console.error('Failed to generate presentation:', error);
+            return c.json({
+                success: false,
+                error: 'Failed to process request. Please ensure you have uploaded a valid PDF file.'
+            }, { status: 400 });
+        }
+    });
+    app.get('/api/download/:id', async (c) => {
+        const { id } = c.req.param();
+        const fileData = generatedFiles.get(id);
+        if (!fileData) {
+            return c.json({ success: false, error: 'File not found or expired.' }, { status: 404 });
+        }
+        // Once downloaded, remove it from memory
+        generatedFiles.delete(id);
+        const headers = new Headers();
+        headers.set('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+        headers.set('Content-Disposition', `attachment; filename="${fileData.filename}"`);
+        return new Response(fileData.blob, { headers });
+    });
+    // Session management routes from template
     app.get('/api/sessions', async (c) => {
         try {
             const controller = getAppController(c.env);
@@ -42,168 +86,44 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             return c.json({ success: true, data: sessions });
         } catch (error) {
             console.error('Failed to list sessions:', error);
-            return c.json({
-                success: false,
-                error: 'Failed to retrieve sessions'
-            }, { status: 500 });
+            return c.json({ success: false, error: 'Failed to retrieve sessions' }, { status: 500 });
         }
     });
-    /**
-     * Create a new chat session
-     * POST /api/sessions
-     * Body: { title?: string, sessionId?: string }
-     */
     app.post('/api/sessions', async (c) => {
         try {
             const body = await c.req.json().catch(() => ({}));
             const { title, sessionId: providedSessionId, firstMessage } = body;
             const sessionId = providedSessionId || crypto.randomUUID();
-            // Generate better session titles
             let sessionTitle = title;
             if (!sessionTitle) {
                 const now = new Date();
-                const dateTime = now.toLocaleString([], {
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
+                const dateTime = now.toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
                 if (firstMessage && firstMessage.trim()) {
                     const cleanMessage = firstMessage.trim().replace(/\s+/g, ' ');
-                    const truncated = cleanMessage.length > 40
-                        ? cleanMessage.slice(0, 37) + '...'
-                        : cleanMessage;
+                    const truncated = cleanMessage.length > 40 ? cleanMessage.slice(0, 37) + '...' : cleanMessage;
                     sessionTitle = `${truncated} • ${dateTime}`;
                 } else {
                     sessionTitle = `Chat ${dateTime}`;
                 }
             }
             await registerSession(c.env, sessionId, sessionTitle);
-            return c.json({
-                success: true,
-                data: { sessionId, title: sessionTitle }
-            });
+            return c.json({ success: true, data: { sessionId, title: sessionTitle } });
         } catch (error) {
             console.error('Failed to create session:', error);
-            return c.json({
-                success: false,
-                error: 'Failed to create session'
-            }, { status: 500 });
+            return c.json({ success: false, error: 'Failed to create session' }, { status: 500 });
         }
     });
-    /**
-     * Delete a chat session
-     * DELETE /api/sessions/:sessionId
-     */
     app.delete('/api/sessions/:sessionId', async (c) => {
         try {
             const sessionId = c.req.param('sessionId');
             const deleted = await unregisterSession(c.env, sessionId);
             if (!deleted) {
-                return c.json({
-                    success: false,
-                    error: 'Session not found'
-                }, { status: 404 });
+                return c.json({ success: false, error: 'Session not found' }, { status: 404 });
             }
             return c.json({ success: true, data: { deleted: true } });
         } catch (error) {
             console.error('Failed to delete session:', error);
-            return c.json({
-                success: false,
-                error: 'Failed to delete session'
-            }, { status: 500 });
-        }
-    });
-    /**
-     * Update session title
-     * PUT /api/sessions/:sessionId/title
-     * Body: { title: string }
-     */
-    app.put('/api/sessions/:sessionId/title', async (c) => {
-        try {
-            const sessionId = c.req.param('sessionId');
-            const { title } = await c.req.json();
-            if (!title || typeof title !== 'string') {
-                return c.json({
-                    success: false,
-                    error: 'Title is required'
-                }, { status: 400 });
-            }
-            const controller = getAppController(c.env);
-            const updated = await controller.updateSessionTitle(sessionId, title);
-            if (!updated) {
-                return c.json({
-                    success: false,
-                    error: 'Session not found'
-                }, { status: 404 });
-            }
-            return c.json({ success: true, data: { title } });
-        } catch (error) {
-            console.error('Failed to update session title:', error);
-            return c.json({
-                success: false,
-                error: 'Failed to update session title'
-            }, { status: 500 });
-        }
-    });
-    /**
-     * Get session count and stats
-     * GET /api/sessions/stats
-     */
-    app.get('/api/sessions/stats', async (c) => {
-        try {
-            const controller = getAppController(c.env);
-            const count = await controller.getSessionCount();
-            return c.json({
-                success: true,
-                data: { totalSessions: count }
-            });
-        } catch (error) {
-            console.error('Failed to get session stats:', error);
-            return c.json({
-                success: false,
-                error: 'Failed to retrieve session stats'
-            }, { status: 500 });
-        }
-    });
-    /**
-     * Clear all chat sessions
-     * DELETE /api/sessions
-     */
-    app.delete('/api/sessions', async (c) => {
-        try {
-            const controller = getAppController(c.env);
-            const deletedCount = await controller.clearAllSessions();
-            return c.json({
-                success: true,
-                data: { deletedCount }
-            });
-        } catch (error) {
-            console.error('Failed to clear all sessions:', error);
-            return c.json({
-                success: false,
-                error: 'Failed to clear all sessions'
-            }, { status: 500 });
-        }
-    });
-    // Example route - you can remove this
-    app.get('/api/test', (c) => c.json({ success: true, data: { name: 'this works' }}));
-    // 🤖 AI Extension Point: Add more custom routes here
-    app.post('/api/generate-presentation', async (c) => {
-        try {
-            const formData = await c.req.formData();
-            const result = await generatePresentation(formData, c.env);
-            if (result.success) {
-                return c.json(result);
-            } else {
-                return c.json(result, { status: 500 });
-            }
-        } catch (error) {
-            console.error('Failed to generate presentation:', error);
-            return c.json({
-                success: false,
-                error: 'Failed to process request. Please ensure you have uploaded a valid PDF file.'
-            }, { status: 400 });
+            return c.json({ success: false, error: 'Failed to delete session' }, { status: 500 });
         }
     });
 }
