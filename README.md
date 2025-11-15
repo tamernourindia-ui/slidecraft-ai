@@ -2,7 +2,7 @@
 
 An intelligent web application that transforms scientific PDF articles into professional, presentation-ready PowerPoint files using AI.
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tamernourindia-ui/slidecraft-ai)
 
 SlideCraft AI is an advanced web application designed to intelligently convert scientific PDF articles into professional PowerPoint presentations. The user initiates the process by uploading a PDF and providing the article's title. They can then customize the output by specifying the desired number of slides, the level of summarization (low, medium, high), and aesthetic choices like fonts and color themes optimized for projectors. The backend, powered by Cloudflare Workers and AI, first analyzes the PDF to extract its content and structure. It then leverages a powerful AI model to summarize the text according to the user's preferences, structuring the output logically across the specified number of slides. The summarized content is then professionally translated. Finally, the system generates two distinct PowerPoint files: a visually polished 'Presentation Version' for audiences, complete with animations, and a 'Presenter Version' with simplified slides and comprehensive speaker notes. The application provides a seamless experience, from a multi-step input form to a real-time progress view and a final results page where users can download their generated presentations.
 
@@ -90,7 +90,7 @@ This project is designed for seamless deployment to Cloudflare Pages.
 1.  **One-Click Deploy:**
     You can deploy this application to your Cloudflare account with a single click.
 
-    [cloudflarebutton]
+    [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tamernourindia-ui/slidecraft-ai)
 
 2.  **Manual Deployment via CLI:**
     If you prefer to deploy from your local machine, use the following command:
