@@ -62,7 +62,8 @@ async function generatePresentationVersion(slides: TranslatedSlideData[], settin
   for (const slideData of slides) {
     const slide = pres.addSlide();
     slide.background = { color: theme.bg };
-    slide.transition = { type: 'fade' };
+    // Resolve TypeScript error by casting to `any` to add the transition property
+    (slide as any).transition = { type: 'fade' };
     slide.addText(slideData.title_fa, {
       x: 0.5, y: 0.25, w: '90%', h: 0.75, fontSize: settings.fontSize + 8, fontFace: settings.farsiFont, bold: true, color: theme.titleColor,
     });
@@ -164,8 +165,8 @@ ${englishSummary}
     {
       "slide_number": 1,
       "title": "عنوان اسلاید به فارسی",
-      "content": "محتوای خلاصه ش��ه به فارسی برای این اسلاید.",
-      "key_points": ["نکته کلیدی ۱ به فارسی", "نکته کلیدی �� به فارسی", "نکته کلیدی ۳ به فارسی"]
+      "content": "محتوای خلاصه شده به فارسی برای این اسلاید.",
+      "key_points": ["نکته کلیدی ۱ به فارسی", "نکته کلیدی ۲ به فارسی", "نکته کلیدی ۳ به فارسی"]
     }
   ]
 }

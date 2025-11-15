@@ -6,6 +6,14 @@ import { Env, getAppController, registerSession, unregisterSession } from "./cor
 import { generatePresentation } from "./presentation-generator";
 // Simple in-memory cache for generated files. In a real-world scenario, use R2 or KV.
 const generatedFiles = new Map<string, { blob: Blob, filename: string }>();
+interface GoogleAIModel {
+    name: string;
+    displayName: string;
+    supportedGenerationMethods: string[];
+}
+interface GoogleAIModelList {
+    models: GoogleAIModel[];
+}
 /**
  * DO NOT MODIFY THIS FUNCTION. Only for your reference.
  */
@@ -40,14 +48,18 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             }
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
             if (!response.ok) {
-                const errorData = await response.json().catch(() => null);
+                const errorData: any = await response.json().catch(() => ({}));
                 const message = errorData?.error?.message || `Invalid API Key or failed to connect to Google AI service. Status: ${response.status}`;
                 throw new Error(message);
             }
-            const data = await response.json();
+            const data = await response.json() as GoogleAIModelList;
             const availableModels = data.models
-                .filter((model: any) => model.supportedGenerationMethods.includes('generateContent') && model.name.includes('gemini'))
-                .map((model: any) => ({
+                .filter((model: GoogleAIModel) => 
+                    model.supportedGenerationMethods.includes('generateContent') &&
+                    !model.name.includes('embedding') &&
+                    (model.name.toLowerCase().includes('gemini') || model.displayName.toLowerCase().includes('gemini'))
+                )
+                .map((model: GoogleAIModel) => ({
                     id: model.name.replace('models/', ''),
                     name: model.displayName,
                 }))
